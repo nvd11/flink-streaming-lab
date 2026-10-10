@@ -58,7 +58,7 @@ class Lab01WatermarkProgressionTest {
                         long eventTime = ctx.timestamp();
                         String logLine = String.format("Tx: %s | EventTime: %d ms | CurrentWM: %d ms",
                                 value.getTxId(), eventTime, currentWatermark);
-                        LOG.info("🌊 [Lab 01 Step] {}", logLine);
+                        LOG.info("[Lab 01 Step] {}", logLine);
                         out.collect(logLine);
                     }
                 });
@@ -67,6 +67,6 @@ class Lab01WatermarkProgressionTest {
         resultStream.executeAndCollect().forEachRemaining(outputLogs::add);
 
         assertThat(outputLogs).hasSize(4);
-        LOG.info("🎉 [Lab 01] Watermark Progression Lab passed cleanly!");
+        LOG.info("[Lab 01] Watermark Progression Lab passed cleanly!");
     }
 }

@@ -1,11 +1,11 @@
 # flink-streaming-lab (Flink 无界流计算深度实验室)
 
-> 🚀 **“批是流的特例，理解水位线与无界聚合才是流计算的灵魂。”**  
+> “批是流的特例，理解水位线与无界聚合才是流计算的灵魂。”  
 > 本项目是专为深入掌握 **Apache Flink 实时流计算引擎** 量身打造的实验场与深度研究平台。旨在以严密、可复现、纯函数式的测试用例与实验设计，彻底吃透 **Event Time 时钟推进、Watermark 倾斜死锁、Window 触发与重开生命周期、O(1) 增量聚合以及迟到数据兜底治理**。
 
 ---
 
-## 🎯 实验室核心使命 (Mission)
+## 实验室核心使命 (Mission)
 
 在批处理中，世界是有界的、静态的，数据可以等待齐备后再做全量切片。但真实世界的金融动账、交易流水与物联传感是**无界的（Unbounded）**，数据必然面临**网络抖动、跨时区延迟、分布式乱序与空闲通道倾斜**。
 
@@ -19,7 +19,7 @@
 
 ---
 
-## 🔬 五大核心实验体系 (The 5 Labs Matrix)
+## 五大核心实验体系 (The 5 Labs Matrix)
 
 | 实验编号 | 实验主题 | 核心攻克技术点 | 生产对应真实场景 | 详细规格 |
 |---|---|---|---|---|
@@ -31,7 +31,7 @@
 
 ---
 
-## 🛠️ 技术基座与实验兵器库 (Tech Stack)
+## 技术基座与实验兵器库 (Tech Stack)
 
 * **核心引擎**: Apache Flink `1.20.0` (Stream API)
 * **语言标准**: Java `21` (LTS, 采用现代 Switch 模式匹配与虚拟线程友好语法)
@@ -43,7 +43,7 @@
 
 ---
 
-## 🚀 极速开始 (Quick Start)
+## 极速开始 (Quick Start)
 
 ### 1. 运行全部实验用例
 ```bash
@@ -61,14 +61,14 @@ mvn test -Dtest=Lab02WindowLifecycleAndLateDataTest
 
 ---
 
-## 📖 目录索引与架构规划
+## 目录索引与架构规划
 
 ```text
 flink-streaming-lab/
 ├── README.md                                    # 实验总纲与架构需求说明 (本文件)
 ├── pom.xml                                      # 纯净 Maven 构建骨架 (Java 21 + Flink 1.20)
 ├── docs/                                        # 体系化架构推导与深度设计规格
-│   ├── gcp-pubsub-vs-kafka-message-delay-mechanisms.md # 🔥 深度架构长文：Pub/Sub vs Kafka 延迟与卡死治理全解
+│   ├── gcp-pubsub-vs-kafka-message-delay-mechanisms.md # 深度架构长文：Pub/Sub vs Kafka 延迟与卡死治理全解
 │   ├── lab01-watermark-and-event-time.md        # Lab 01 深度设计规格
 │   ├── lab02-window-lifecycle-and-late-data.md  # Lab 02 深度设计规格
 │   ├── lab03-incremental-streaming-aggregation.md # Lab 03 深度设计规格
@@ -88,6 +88,3 @@ flink-streaming-lab/
         └── lab05/                               # Lab 05 会话窗口动态合并实验
 ```
 
----
-
-> 💡 *Created with ❤️ by Cindy for Master Jason.*
