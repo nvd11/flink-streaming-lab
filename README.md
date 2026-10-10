@@ -67,7 +67,8 @@ mvn test -Dtest=Lab02WindowLifecycleAndLateDataTest
 flink-streaming-lab/
 ├── README.md                                    # 实验总纲与架构需求说明 (本文件)
 ├── pom.xml                                      # 纯净 Maven 构建骨架 (Java 21 + Flink 1.20)
-├── docs/                                        # 5 大实验的体系化架构与推导规格文档
+├── docs/                                        # 体系化架构推导与深度设计规格
+│   ├── gcp-pubsub-vs-kafka-message-delay-mechanisms.md # 🔥 深度架构长文：Pub/Sub vs Kafka 延迟与卡死治理全解
 │   ├── lab01-watermark-and-event-time.md        # Lab 01 深度设计规格
 │   ├── lab02-window-lifecycle-and-late-data.md  # Lab 02 深度设计规格
 │   ├── lab03-incremental-streaming-aggregation.md # Lab 03 深度设计规格
