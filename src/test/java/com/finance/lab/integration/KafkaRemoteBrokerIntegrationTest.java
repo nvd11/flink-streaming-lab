@@ -38,15 +38,27 @@ class KafkaRemoteBrokerIntegrationTest {
     private static final String BOOTSTRAP_SERVERS = "kafka.jppwl.asia:9092";
     private static final String TOPIC_NAME = "sms-tx-events";
 
-    @Test
-    @DisplayName("测试通过域名经 Kong L4 透传连接手机 Kafka: Topic 元数据探测、生产消息与消费确认")
-    void testRemoteKafkaProduceAndConsume() throws Exception {
-        LOG.info("开始连接远端 Kafka Broker: {}", BOOTSTRAP_SERVERS);
+    // SASL PLAIN 认证凭据 (安全加固: admin / hsbc1234)
+    private static final String SASL_JAAS_CONFIG =
+            "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"admin\" password=\"hsbc1234\";";
 
-        // 1. AdminClient 元数据探针
-        Properties adminProps = new Properties();
-        adminProps.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        adminProps.put(CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG, "15000");
+    private Properties createBaseSecurityProps() {
+        Properties props = new Properties();
+        props.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_PLAINTEXT");
+        props.put("sasl.mechanism", "PLAIN");
+        props.put("sasl.jaas.config", SASL_JAAS_CONFIG);
+        props.put(CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG, "15000");
+        return props;
+    }
+
+    @Test
+    @DisplayName("测试通过域名经 Kong L4 透传连接手机 Kafka: SASL 认证、Topic 元数据探测、生产消息与消费确认")
+    void testRemoteKafkaProduceAndConsume() throws Exception {
+        LOG.info("开始连接远端 Kafka Broker (SASL_PLAINTEXT): {}", BOOTSTRAP_SERVERS);
+
+        // 1. AdminClient 元数据探针 (带 SASL 账密认证)
+        Properties adminProps = createBaseSecurityProps();
 
         try (AdminClient adminClient = AdminClient.create(adminProps)) {
             ListTopicsResult listTopics = adminClient.listTopics();
@@ -61,16 +73,14 @@ class KafkaRemoteBrokerIntegrationTest {
             assertThat(desc.partitions()).hasSize(2);
         }
 
-        // 2. Producer 消息写入 (测试单物理分区写入与单调递增 Offset)
-        Properties prodProps = new Properties();
-        prodProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        // 2. Producer 消息写入 (带 SASL 账密认证)
+        Properties prodProps = createBaseSecurityProps();
         prodProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         prodProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         prodProps.put(ProducerConfig.ACKS_CONFIG, "all");
-        prodProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, "15000");
 
         String testKey = "CARD-7788";
-        String testValue = "{\"txId\":\"TX-REMOTE-001\",\"cardTail\":\"7788\",\"amount\":58.80,\"merchant\":\"星巴克\"}";
+        String testValue = "{\"txId\":\"TX-REMOTE-SASL-001\",\"cardTail\":\"7788\",\"amount\":88.88,\"merchant\":\"星巴克臻选\"}";
 
         long producedOffset;
         int producedPartition;
@@ -86,14 +96,12 @@ class KafkaRemoteBrokerIntegrationTest {
             assertThat(meta.offset()).isGreaterThanOrEqualTo(0);
         }
 
-        // 3. Consumer 消息精确读取 (Assign 模式直取刚写入的分区与 Offset)
-        Properties consProps = new Properties();
-        consProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        // 3. Consumer 消息精确读取 (带 SASL 账密认证)
+        Properties consProps = createBaseSecurityProps();
         consProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         consProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         consProps.put(ConsumerConfig.GROUP_ID_CONFIG, "flink-lab-verifier-" + UUID.randomUUID());
         consProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        consProps.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, "15000");
 
         try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consProps)) {
             TopicPartition tp = new TopicPartition(TOPIC_NAME, producedPartition);
