@@ -13,13 +13,21 @@
 
 ### 累加器实体 (Accumulator)
 ```java
-public class TxSummaryAccumulator {
-    private BigDecimal totalExpense = BigDecimal.ZERO;
-    private long txCount = 0L;
-    private BigDecimal maxSingleAmount = BigDecimal.ZERO;
-    private String maxMerchant = "";
-    // 纯粹的 in-place 更新方法
-    public void add(BigDecimal amount, String merchant) { ... }
+public class ExpenseRiskAccumulator implements Serializable {
+    private long totalTxCount = 0L;                          // 5分钟窗口内支出项总数
+    private BigDecimal totalExpenseAmount = BigDecimal.ZERO; // 5分钟窗口内支出总金额
+    private long transferTxCount = 0L;                       // 其中：个人转账 (PERSONAL_TRANSFER) 笔数
+    private BigDecimal transferAmount = BigDecimal.ZERO;     // 其中：个人转账累计金额 (> 5000 触发报警)
+
+    // 纯粹的 O(1) in-place 更新方法
+    public void add(BigDecimal amount, String category) {
+        this.totalTxCount++;
+        this.totalExpenseAmount = this.totalExpenseAmount.add(amount);
+        if ("PERSONAL_TRANSFER".equalsIgnoreCase(category)) {
+            this.transferTxCount++;
+            this.transferAmount = this.transferAmount.add(amount);
+        }
+    }
 }
 ```
 
@@ -30,10 +38,10 @@ public class TxSummaryAccumulator {
 - `merge(a, b)`: 会话窗口合并时使用。
 
 ### 窗口上下文包装：`ProcessWindowFunction<IN, OUT, KEY, W>`
-- 输入的 `Iterable<AggResult> elements` **被 Flink 保证仅有 1 个元素**（即 `AggregateFunction` 产出的增量结果）。
-- 专职将 `context.window().getStart()` 与 `context.window().getEnd()` 填充进领域模型。
+- 输入的 `Iterable<ExpenseRiskAccumulator> elements` **被 Flink 保证仅有 1 个元素**（即 `AggregateFunction` 产出的增量结果）。
+- 专职将 `context.window().getStart()` 与 `context.window().getEnd()` 填充进领域模型，并执行 `acc.getTransferAmount().compareTo(new BigDecimal("5000.00")) > 0` 阈值判定，打上 `transferAlert = true/false` 报警标签。
 
-## 3. 实验验证目标与断言
-1. **增量调用次数断言**：断言输入 $N$ 条数据时，`add()` 精确被调用 $N$ 次。
-2. **上下文透传断言**：最终下游接收到的输出行不仅包含精确的累计金额，还包含窗口的精确起止时间戳。
-3. **高吞吐压力断言**：在本地模拟单 Key 注入 100,000 条动账事件，验证堆内存无明显爬升，瞬间完成聚合。
+## 3. 实验验证目标与断言（5分钟刷 10 万次卡也不撑爆内存）
+1. **增量调用次数断言**：断言单张卡（如 `cardTail = "6666"`）在 5 分钟窗口内输入 $N$ 条支出明细时，`add()` 精确被调用 $N$ 次，每来一笔立即累加后释放原事件引用。
+2. **转账风控与上下文透传断言**：最终下游接收到的 `WindowAggResult` 不仅包含精确的 5 分钟总支出笔数、总支出金额、转账总额与 `transferAlert = true`（当转账 > 5000 元时），还包含窗口的精确起止时间戳 `[10:00:00, 10:05:00)`。
+3. **高吞吐压力断言**：在本地模拟单卡 5 分钟内注入 10,000+ 条动账事件，验证堆内存始终保持 $O(1)$ 无爬升，瞬间完成聚合与报警裁决。

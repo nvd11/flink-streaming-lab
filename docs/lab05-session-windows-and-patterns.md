@@ -18,13 +18,13 @@
 实现增量预聚合时，`AggregateFunction` 必须实现 `merge(ACC a, ACC b)`：
 ```java
 @Override
-public TxSummaryAccumulator merge(TxSummaryAccumulator a, TxSummaryAccumulator b) {
-    a.mergeFrom(b);
+public ExpenseRiskAccumulator merge(ExpenseRiskAccumulator a, ExpenseRiskAccumulator b) {
+    a.mergeFrom(b); // 合并两段子会话的 totalTxCount, totalExpenseAmount 与 transferAmount
     return a;
 }
 ```
 
-## 3. 实验验证目标与断言
-1. **单会话动态延展断言**：在间隙（如 10 分钟）内连续注入 4 笔动账，验证最终仅输出 1 个会话窗口，且起止时间覆盖第 1 笔至最后 1 笔动账。
-2. **多会话分裂断言**：当两笔动账间隔超过 10 分钟时，验证系统清晰分裂为 2 个独立的会话统计报告。
-3. **风控规则断言**：在会话窗口中实现风控告警逻辑（如会话内交易笔数 $\ge 3$ 且跨商户数 $\ge 3$ 触发高频预警）。
+## 3. 实验验证目标与断言（对比固定 5 分钟窗口的“拆单逃逸”破局）
+1. **固定窗口拆单逃逸复现**：卡尾号 `8888` 在 `10:04:50` 转账 `3000 元`（落入 `[10:00, 10:05)`），紧接着在 `10:05:10` 又转账 `3000 元`（落入 `[10:05, 10:10)`）。虽然短短 20 秒内连续转出 `6000 元`（远超 `5000 元` 报警线），但固定 5 分钟滚动窗口被整点一分为二，两个窗口各 `3000 元` 均未触发报警。
+2. **会话窗口动态合并破局断言**：采用 5 分钟静默间隙会话窗口（`EventTimeSessionWindows.withGap(Duration.ofMinutes(5))`），上述相隔 20 秒的两笔 `3000 元` 转账自动触发 `merge(a, b)` 合并为单一会话窗口 `[10:04:50, 10:10:10)`，累计转账 `6000.00 > 5000.00`，当场精准触发 `transferAlert = true` 风控报警！
+3. **多会话超时分裂断言**：当后续转账间隔超过 5 分钟静默期时，验证系统清晰分裂为 2 个独立的会话统计报告。
